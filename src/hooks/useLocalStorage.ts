@@ -10,10 +10,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
-      if (item) {
-        console.log(`[useLocalStorage] Loaded key "${key}" from localStorage.`);
-        return JSON.parse(item) as T;
-      }
+      if (item) return JSON.parse(item) as T;
       return initialValue;
     } catch (error) {
       console.error(`[useLocalStorage] Error reading localStorage key "${key}":`, error);
@@ -27,9 +24,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
       // 関数型アップデートにも対応
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      console.log(`[useLocalStorage] Saved key "${key}" to localStorage.`);
     } catch (error) {
       console.error(`[useLocalStorage] Error setting localStorage key "${key}":`, error);
     }

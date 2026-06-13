@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { simulate, calculateAnnualLoanPayment } from './simulation';
-import { DEFAULT_PARAMS } from './presets';
+import { SAMPLE_PARAMS } from './presets';
 
 describe('ライフプラン・シミュレーション 計算エンジンテスト', () => {
   
@@ -17,7 +17,7 @@ describe('ライフプラン・シミュレーション 計算エンジンテス
   });
 
   describe('2. 既定パラメータでの単年度収支テスト', () => {
-    const results = simulate(DEFAULT_PARAMS);
+    const results = simulate(SAMPLE_PARAMS);
 
     it('29歳時点での年間収支が +27万円 (±1万円の許容誤差) であること', () => {
       const row29 = results.find(r => r.age === 29);
@@ -35,7 +35,7 @@ describe('ライフプラン・シミュレーション 計算エンジンテス
   });
 
   describe('3. 既定パラメータでの累計資産テスト', () => {
-    const results = simulate(DEFAULT_PARAMS);
+    const results = simulate(SAMPLE_PARAMS);
 
     it('53歳時点での累計資産が +907万円 (±25万円の許容誤差) であること', () => {
       const row53 = results.find(r => r.age === 53);
@@ -54,7 +54,7 @@ describe('ライフプラン・シミュレーション 計算エンジンテス
 
   describe('4. 複数シナリオにおける最小累計資産テスト', () => {
     it('金利 4% シナリオにおいて、最小累計資産が 53歳時点で 約-1306万円 (±25万円の許容誤差) になること', () => {
-      const p4 = { ...DEFAULT_PARAMS, interestRate: 4.0 };
+      const p4 = { ...SAMPLE_PARAMS, interestRate: 4.0 };
       const results4 = simulate(p4);
       
       let minAsset = Infinity;
@@ -72,7 +72,7 @@ describe('ライフプラン・シミュレーション 計算エンジンテス
     });
 
     it('年収850万頭打ちシナリオにおいて、最小累計資産が 53歳時点で 約-1808万円 (±40万円の許容誤差) になること', () => {
-      const p850 = { ...DEFAULT_PARAMS, salaryCap: 850 };
+      const p850 = { ...SAMPLE_PARAMS, salaryCap: 850 };
       const results850 = simulate(p850);
       
       let minAsset = Infinity;

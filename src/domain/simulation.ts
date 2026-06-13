@@ -1,5 +1,65 @@
 import type { SimulationParams, YearRow, IncomeAnchor, TaxAnchor } from './types';
 
+/** シミュレーション結果から主要な指標を抽出した分析結果 */
+export interface SimulationAnalysis {
+  minAsset: number; // 期間中の最小累計資産
+  minAssetAge: number; // 最小累計資産になる年齢
+  minusPeriods: { start: number; end: number }[]; // 資産がマイナスになる期間
+  depletionAge: number | null; // 初めて資産がマイナスに転じる年齢 (尽きる年齢)
+  finalAsset: number; // 最終年の累計資産
+  finalAge: number; // 最終年齢
+  isHealthy: boolean; // 期間を通じて一度もマイナスにならないか
+}
+
+/**
+ * シミュレーション結果(年表)から、最小資産・赤字期間・最終資産などの
+ * サマリー指標を計算します。UI 側の表示に利用します。
+ */
+export const analyzeResults = (results: YearRow[]): SimulationAnalysis | null => {
+  if (results.length === 0) return null;
+
+  let minAsset = Infinity;
+  let minAssetAge = -1;
+  let depletionAge: number | null = null;
+  const minusPeriods: { start: number; end: number }[] = [];
+  let inMinus = false;
+  let currentStart = -1;
+
+  results.forEach((row) => {
+    if (row.cumulativeAsset < minAsset) {
+      minAsset = row.cumulativeAsset;
+      minAssetAge = row.age;
+    }
+
+    if (row.cumulativeAsset < 0) {
+      if (!inMinus) {
+        inMinus = true;
+        currentStart = row.age;
+        if (depletionAge === null) depletionAge = row.age;
+      }
+    } else if (inMinus) {
+      inMinus = false;
+      minusPeriods.push({ start: currentStart, end: row.age - 1 });
+    }
+  });
+
+  if (inMinus) {
+    minusPeriods.push({ start: currentStart, end: results[results.length - 1].age });
+  }
+
+  const finalRow = results[results.length - 1];
+
+  return {
+    minAsset,
+    minAssetAge,
+    minusPeriods,
+    depletionAge,
+    finalAsset: finalRow.cumulativeAsset,
+    finalAge: finalRow.age,
+    isHealthy: minusPeriods.length === 0,
+  };
+};
+
 /**
  * 元利均等返済における年間のローン返済額を計算します。
  * 式: P * r * (1 + r)^n / ((1 + r)^n - 1) * 12
@@ -221,8 +281,6 @@ export const calculateCarCost = (
  * @param params シミュレーションパラメータ
  */
 export const simulate = (params: SimulationParams): YearRow[] => {
-  console.log(`Starting simulation from age ${params.startAge} to ${params.endAge}`);
-  
   const results: YearRow[] = [];
   let asset = params.initialAsset;
   let cash = params.initialAsset;
@@ -239,16 +297,15 @@ export const simulate = (params: SimulationParams): YearRow[] => {
     // 1. 収入の計算
     const salary = interpolateIncome(age, params.incomeCurve, params.salaryCap);
     
-    let takeHome = 0;
-    if (params.taxMode === 'rate') {
-      takeHome = salary * (params.taxRate / 100);
-    } else {
-      takeHome = interpolateTakeHome(salary, params.taxAnchors);
-    }
+    let takeHome =
+      params.taxMode === 'rate'
+        ? salary * (params.taxRate / 100)
+        : interpolateTakeHome(salary, params.taxAnchors);
 
-    // 初年度住民税なしオプション
+    // 初年度は前年の所得がないため住民税が課税されないオプション。
+    // 特定個人の固定値ではなく、住民税のおおよその額(額面の約4.5%)を手取りに足し戻す。
     if (params.isFirstYearNoResidentTax && age === params.startAge) {
-      takeHome = 364;
+      takeHome += salary * 0.045;
     }
 
     // 配偶者収入
@@ -327,6 +384,5 @@ export const simulate = (params: SimulationParams): YearRow[] => {
     });
   }
 
-  console.log(`Simulation finished. Final asset at age ${params.endAge}: ${asset}万円`);
   return results;
 };

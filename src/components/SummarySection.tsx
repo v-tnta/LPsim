@@ -1,201 +1,123 @@
 import React, { useState } from 'react';
-import type { YearRow, Scenario } from '../domain/types';
-import { AlertTriangle, Award, Landmark, Trash2, Plus, Calendar } from 'lucide-react';
-import { simulate } from '../domain/simulation';
+import type { Scenario, YearRow } from '../domain/types';
+import type { SimulationAnalysis } from '../domain/simulation';
+import { AlertTriangle, CheckCircle2, Layers, Trash2, Plus } from 'lucide-react';
+
+interface ScenarioStat {
+  scenario: Scenario;
+  rows: YearRow[];
+  analysis: SimulationAnalysis | null;
+}
 
 interface SummarySectionProps {
+  analysis: SimulationAnalysis | null;
   scenarios: Scenario[];
-  currentResults: YearRow[];
+  scenarioStats: ScenarioStat[];
   onSaveScenario: (name: string) => void;
   onDeleteScenario: (id: string) => void;
 }
 
+const fmt = (n: number) => `${n < 0 ? '▲' : ''}${Math.abs(n).toLocaleString()}`;
+
 export const SummarySection: React.FC<SummarySectionProps> = ({
-  scenarios,
-  currentResults,
-  onSaveScenario,
-  onDeleteScenario,
+  analysis, scenarios, scenarioStats, onSaveScenario, onDeleteScenario,
 }) => {
-  const [newScenarioName, setNewScenarioName] = useState('');
-
-  // シミュレーション結果の分析を行う共通のヘルパー関数
-  const analyzeResults = (results: YearRow[]) => {
-    if (results.length === 0) return null;
-
-    let minAsset = Infinity;
-    let minAssetAge = -1;
-    const minusPeriods: { start: number; end: number }[] = [];
-    let inMinus = false;
-    let currentStart = -1;
-
-    results.forEach(row => {
-      // 最小累計資産の検出
-      if (row.cumulativeAsset < minAsset) {
-        minAsset = row.cumulativeAsset;
-        minAssetAge = row.age;
-      }
-
-      // マイナス期間の検出
-      if (row.cumulativeAsset < 0) {
-        if (!inMinus) {
-          inMinus = true;
-          currentStart = row.age;
-        }
-      } else {
-        if (inMinus) {
-          inMinus = false;
-          minusPeriods.push({ start: currentStart, end: row.age - 1 });
-        }
-      }
-    });
-
-    if (inMinus) {
-      minusPeriods.push({ start: currentStart, end: results[results.length - 1].age });
-    }
-
-    const finalRow = results[results.length - 1];
-
-    return {
-      minAsset,
-      minAssetAge,
-      minusPeriods,
-      finalAsset: finalRow.cumulativeAsset,
-      finalAge: finalRow.age,
-    };
-  };
-
-  const analysis = analyzeResults(currentResults);
+  const [newName, setNewName] = useState('');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newScenarioName.trim()) return;
-    console.log(`Save scenario requested: ${newScenarioName}`);
-    onSaveScenario(newScenarioName.trim());
-    setNewScenarioName('');
+    if (!newName.trim()) return;
+    onSaveScenario(newName.trim());
+    setNewName('');
   };
 
   return (
     <div className="summary-section">
-      {/* 1. 現在の分析アラート */}
       {analysis && (
-        <div className="card analysis-card">
-          <div className="card-title">
-            <Calendar size={20} className="text-primary" />
-            <h3>シミュレーション分析サマリー</h3>
+        <div className={`hero-card ${analysis.isHealthy ? 'hero-ok' : 'hero-warn'}`}>
+          <div className="hero-status">
+            {analysis.isHealthy ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            {analysis.isHealthy ? '資金はもつ見込みです' : '資産が不足する時期があります'}
           </div>
 
-          <div className="analysis-grid">
-            <div className="analysis-metric">
-              <span className="metric-label">65歳時点の累計資産</span>
-              <span className={`metric-value ${analysis.finalAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
-                {analysis.finalAsset >= 0 ? '+' : ''}{analysis.finalAsset.toLocaleString()}万円
+          <div className="hero-main">
+            <span className="hero-label">{analysis.finalAge}歳時点の資産</span>
+            <span className={`hero-value ${analysis.finalAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
+              {fmt(analysis.finalAsset)}<span className="hero-unit">万円</span>
+            </span>
+          </div>
+
+          <div className="hero-metrics">
+            <div className="hero-metric">
+              <span className="hm-label">いちばん少ないとき</span>
+              <span className={`hm-value ${analysis.minAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
+                {fmt(analysis.minAsset)}万円
+                <span className="hm-sub">（{analysis.minAssetAge}歳）</span>
               </span>
             </div>
-
-            <div className="analysis-metric">
-              <span className="metric-label">一生の最低資産額</span>
-              <span className={`metric-value ${analysis.minAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
-                {analysis.minAsset.toLocaleString()}万円 ({analysis.minAssetAge}歳)
+            <div className="hero-metric">
+              <span className="hm-label">資産が尽きる年齢</span>
+              <span className={`hm-value ${analysis.depletionAge === null ? 'positive-value' : 'negative-value'}`}>
+                {analysis.depletionAge === null ? 'なし' : `${analysis.depletionAge}歳`}
               </span>
             </div>
           </div>
 
-          {analysis.minusPeriods.length > 0 ? (
-            <div className="alert-box alert-danger">
-              <AlertTriangle size={18} />
-              <div>
-                <strong>資産赤字警報: </strong>
-                {analysis.minusPeriods.map((p, idx) => (
-                  <span key={idx}>
-                    {p.start}〜{p.end}歳（{p.end - p.start + 1}年間）
-                    {idx < analysis.minusPeriods.length - 1 ? '、' : ''}
-                  </span>
+          {!analysis.isHealthy && (
+            <div className="hero-alert">
+              <AlertTriangle size={16} />
+              <span>
+                {analysis.minusPeriods.map((p, i) => (
+                  <span key={i}>{p.start}〜{p.end}歳{i < analysis.minusPeriods.length - 1 ? '、' : ''}</span>
                 ))}
-                の期間、累計資産がマイナスになります。
-                最大赤字額は <strong>▲{Math.abs(analysis.minAsset).toLocaleString()}万円</strong> ({analysis.minAssetAge}歳時点) です。
-              </div>
-            </div>
-          ) : (
-            <div className="alert-box alert-success">
-              <Award size={18} />
-              <div>
-                <strong>健全な資金計画:</strong> シミュレーション期間を通じて累計資産がマイナスになる時期はありません。
-              </div>
+                に資産がマイナスになります。最大で <strong>▲{Math.abs(analysis.minAsset).toLocaleString()}万円</strong>（{analysis.minAssetAge}歳）。
+              </span>
             </div>
           )}
         </div>
       )}
 
-      {/* 2. シナリオの保存と一覧 */}
       <div className="card scenario-card">
         <div className="card-title">
-          <Landmark size={20} className="text-primary" />
-          <h3>シナリオ比較・保存</h3>
+          <Layers size={18} className="text-primary" />
+          <h3>シナリオを比較</h3>
         </div>
+        <p className="card-desc">今の条件に名前を付けて保存すると、グラフ上で比べられます（最大5つ）。</p>
 
-        {/* 新規シナリオ保存フォーム */}
         <form onSubmit={handleSave} className="scenario-save-form">
           <input
             type="text"
-            className="form-control"
-            placeholder="現在の条件をシナリオ名で保存"
-            value={newScenarioName}
-            onChange={e => setNewScenarioName(e.target.value)}
+            className="text-input"
+            placeholder="例：今のプラン / 車を買わない"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
             maxLength={20}
           />
           <button type="submit" className="btn btn-primary" disabled={scenarios.length >= 5}>
             <Plus size={16} /> 保存
           </button>
         </form>
-        {scenarios.length >= 5 && (
-          <p className="form-help text-danger">※ シナリオは最大5つまで保存可能です。不要なものを削除してください。</p>
-        )}
+        {scenarios.length >= 5 && <p className="field-note text-danger">シナリオは最大5つまでです。</p>}
 
-        {/* 保存済みシナリオカードリスト */}
         <div className="scenario-list">
-          {scenarios.map(sc => {
-            // 各シナリオについて実際のシミュレーションを実行して指標を計算
-            const scResults = simulate(sc.params);
-            const scAnalysis = analyzeResults(scResults);
-
-            return (
-              <div key={sc.id} className="scenario-item-card" style={{ borderLeftColor: sc.color }}>
-                <div className="scenario-item-header">
-                  <div className="scenario-info">
-                    <span className="color-badge" style={{ backgroundColor: sc.color }}></span>
-                    <span className="scenario-name">{sc.name}</span>
-                  </div>
-                  <button 
-                    className="btn-delete-scenario" 
-                    onClick={() => onDeleteScenario(sc.id)}
-                    title="シナリオ削除"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                
-                {scAnalysis && (
-                  <div className="scenario-metrics-mini">
-                    <div>
-                      <span className="lbl">65歳累計:</span>
-                      <span className={`val font-semibold ${scAnalysis.finalAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
-                        {scAnalysis.finalAsset.toLocaleString()}万円
-                      </span>
-                    </div>
-                    <div>
-                      <span className="lbl">最小資産:</span>
-                      <span className={`val font-semibold ${scAnalysis.minAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
-                        {scAnalysis.minAsset.toLocaleString()}万円 ({scAnalysis.minAssetAge}歳)
-                      </span>
-                    </div>
-                  </div>
-                )}
+          {scenarioStats.map(({ scenario, analysis: a }) => (
+            <div key={scenario.id} className="scenario-item" style={{ borderLeftColor: scenario.color }}>
+              <div className="scenario-item-head">
+                <span className="scenario-name">
+                  <span className="color-dot" style={{ backgroundColor: scenario.color }} />
+                  {scenario.name}
+                </span>
+                <button className="row-del" onClick={() => onDeleteScenario(scenario.id)} aria-label="シナリオ削除"><Trash2 size={15} /></button>
               </div>
-            );
-          })}
-          {scenarios.length === 0 && (
-            <p className="no-data-text text-muted">保存された比較シナリオはありません。</p>
-          )}
+              {a && (
+                <div className="scenario-metrics">
+                  <span><span className="lbl">{a.finalAge}歳:</span> <span className={a.finalAsset >= 0 ? 'positive-value' : 'negative-value'}>{fmt(a.finalAsset)}万</span></span>
+                  <span><span className="lbl">最小:</span> <span className={a.minAsset >= 0 ? 'positive-value' : 'negative-value'}>{fmt(a.minAsset)}万</span></span>
+                </div>
+              )}
+            </div>
+          ))}
+          {scenarios.length === 0 && <p className="empty-cell">保存したシナリオはまだありません。</p>}
         </div>
       </div>
     </div>

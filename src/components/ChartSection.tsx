@@ -1,171 +1,96 @@
 import React, { useState } from 'react';
 import type { YearRow, Scenario } from '../domain/types';
-import { 
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, ReferenceLine, ReferenceArea, Cell 
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ReferenceLine, ReferenceArea, Cell,
 } from 'recharts';
 import { TrendingUp, BarChart2 } from 'lucide-react';
 
 interface ChartSectionProps {
   currentResults: YearRow[];
   scenarios: Scenario[];
-  // 各シナリオの計算結果をマージしたデータマップ
-  // { age: number, [scenarioId: string]: number }[]
-  mergedChartData: any[];
+  mergedChartData: Record<string, number>[];
 }
 
-export const ChartSection: React.FC<ChartSectionProps> = ({
-  currentResults,
-  scenarios,
-  mergedChartData,
-}) => {
+interface TooltipItem { color?: string; name?: string; value?: number }
+interface ChartTooltipProps { active?: boolean; payload?: TooltipItem[]; label?: string | number }
+
+const CustomTooltip: React.FC<ChartTooltipProps> = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="custom-tooltip">
+      <p className="tooltip-label">{`${label}歳`}</p>
+      {payload.map((pld, i) => (
+        <div key={i} className="tooltip-row" style={{ color: pld.color }}>
+          <span className="tooltip-dot" style={{ backgroundColor: pld.color }} />
+          <span className="tooltip-name">{pld.name}</span>
+          <span className="tooltip-value">{Math.round(pld.value ?? 0).toLocaleString()}万円</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const ChartSection: React.FC<ChartSectionProps> = ({ currentResults, scenarios, mergedChartData }) => {
   const [activeTab, setActiveTab] = useState<'asset' | 'balance'>('asset');
 
-  // カスタムツールチップのコンポーネント
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip">
-          <p className="tooltip-label">{`${label}歳`}</p>
-          {payload.map((pld: any, index: number) => (
-            <div key={index} className="tooltip-data-row" style={{ color: pld.color }}>
-              <span className="tooltip-dot" style={{ backgroundColor: pld.color }}></span>
-              <span className="tooltip-name">{pld.name}:</span>
-              <span className="tooltip-value font-semibold">
-                {Math.round(pld.value).toLocaleString()}万円
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
-    <div className="card chart-section-card">
-      <div className="chart-header">
-        <div className="chart-tabs">
-          <button 
-            className={`chart-tab-btn ${activeTab === 'asset' ? 'active' : ''}`}
-            onClick={() => setActiveTab('asset')}
-          >
-            <TrendingUp size={16} /> 累計資産推移 (シナリオ比較)
-          </button>
-          <button 
-            className={`chart-tab-btn ${activeTab === 'balance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('balance')}
-          >
-            <BarChart2 size={16} /> 年間収支 (単年度)
-          </button>
-        </div>
+    <div className="card chart-card">
+      <div className="chart-tabs">
+        <button className={`chart-tab ${activeTab === 'asset' ? 'active' : ''}`} onClick={() => setActiveTab('asset')}>
+          <TrendingUp size={16} /> 資産の推移
+        </button>
+        <button className={`chart-tab ${activeTab === 'balance' ? 'active' : ''}`} onClick={() => setActiveTab('balance')}>
+          <BarChart2 size={16} /> 年間の収支
+        </button>
       </div>
 
       <div className="chart-body">
         {currentResults.length === 0 ? (
-          <div className="no-data-placeholder">
-            データがありません。パラメータを入力してください。
-          </div>
+          <div className="no-data-placeholder">条件を入力すると、ここにグラフが表示されます。</div>
         ) : activeTab === 'asset' ? (
-          /* 1. 累計資産の推移グラフ (折れ線) */
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={380}>
-              <LineChart 
-                data={mergedChartData}
-                margin={{ top: 20, right: 20, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis 
-                  dataKey="age" 
-                  stroke="var(--text-muted)" 
-                  tick={{ fontSize: 12 }} 
-                  unit="歳"
-                />
-                <YAxis 
-                  stroke="var(--text-muted)" 
-                  tick={{ fontSize: 12 }} 
-                  unit="万"
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="plainline" wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                
-                {/* 0ラインの強調 */}
-                <ReferenceLine y={0} stroke="var(--danger)" strokeWidth={1} />
-                
-                {/* マイナス領域を薄い赤背景にする */}
-                <ReferenceArea y1={-99999} y2={0} fill="var(--danger)" fillOpacity={0.03} />
-
-                {/* 現在の編集パラメータの線 (太い実線で表す) */}
-                <Line 
-                  type="monotone" 
-                  dataKey="現在のプラン" 
-                  stroke="var(--primary)" 
-                  strokeWidth={3} 
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={mergedChartData} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="age" stroke="var(--text-muted)" tick={{ fontSize: 11 }} unit="歳" minTickGap={20} />
+              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} width={44} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend iconType="plainline" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <ReferenceLine y={0} stroke="var(--danger)" strokeWidth={1} />
+              <ReferenceArea y1={-9999999} y2={0} fill="var(--danger)" fillOpacity={0.04} />
+              <Line type="monotone" dataKey="現在のプラン" stroke="var(--primary)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+              {scenarios.map((sc) => (
+                <Line
+                  key={sc.id}
+                  type="monotone"
+                  dataKey={sc.name}
+                  stroke={sc.color}
+                  strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 6 }}
+                  strokeDasharray={sc.dashStyle === 'dashed' ? '5 5' : sc.dashStyle === 'dotted' ? '2 2' : undefined}
                 />
-
-                {/* 保存されているシナリオの線 */}
-                {scenarios.map(sc => (
-                  <Line 
-                    key={sc.id}
-                    type="monotone" 
-                    dataKey={sc.name} 
-                    stroke={sc.color} 
-                    strokeWidth={2}
-                    dot={false}
-                    strokeDasharray={
-                      sc.dashStyle === 'dashed' ? '5 5' : 
-                      sc.dashStyle === 'dotted' ? '2 2' : undefined
-                    }
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
         ) : (
-          /* 2. 年間収支の推移グラフ (棒グラフ、赤字年は赤) */
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={380}>
-              <BarChart
-                data={currentResults}
-                margin={{ top: 20, right: 20, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis 
-                  dataKey="age" 
-                  stroke="var(--text-muted)" 
-                  tick={{ fontSize: 12 }} 
-                  unit="歳"
-                />
-                <YAxis 
-                  stroke="var(--text-muted)" 
-                  tick={{ fontSize: 12 }} 
-                  unit="万"
-                />
-                <Tooltip 
-                  formatter={(value: any) => [`${Math.round(value).toLocaleString()}万円`, '年間収支']}
-                  contentStyle={{ backgroundColor: 'var(--bg-surface-solid)', borderColor: 'var(--border-color)' }}
-                  labelFormatter={(label) => `${label}歳`}
-                />
-                
-                <ReferenceLine y={0} stroke="var(--text-muted)" strokeWidth={1} />
-                
-                <Bar dataKey="annualBalance">
-                  {currentResults.map((entry, index) => {
-                    const isNegative = entry.annualBalance < 0;
-                    return (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={isNegative ? 'var(--danger)' : 'var(--success)'} 
-                        fillOpacity={0.7}
-                      />
-                    );
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={currentResults} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="age" stroke="var(--text-muted)" tick={{ fontSize: 11 }} unit="歳" minTickGap={20} />
+              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} width={44} />
+              <Tooltip
+                formatter={(value) => [`${Math.round(Number(value)).toLocaleString()}万円`, '年間収支']}
+                contentStyle={{ backgroundColor: 'var(--bg-surface-solid)', borderColor: 'var(--border-color)', borderRadius: 8 }}
+                labelFormatter={(label) => `${label}歳`}
+              />
+              <ReferenceLine y={0} stroke="var(--text-muted)" strokeWidth={1} />
+              <Bar dataKey="annualBalance" radius={[2, 2, 0, 0]}>
+                {currentResults.map((entry, i) => (
+                  <Cell key={i} fill={entry.annualBalance < 0 ? 'var(--danger)' : 'var(--success)'} fillOpacity={0.75} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         )}
       </div>
     </div>
