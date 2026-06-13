@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { SimulationParams, IncomeAnchor } from '../domain/types';
+import { interpolateTakeHome } from '../domain/simulation';
 import {
   User, TrendingUp, Home, Users, Wallet, Car, PiggyBank,
   Plus, Trash2, ChevronDown, FileText,
@@ -122,6 +123,14 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
   const setPropertyPrice = (price: number) => updateMany({ propertyPrice: price, loanAmount: Math.max(0, price - params.downPayment) });
   const setDownPayment = (down: number) => updateMany({ downPayment: down, loanAmount: Math.max(0, params.propertyPrice - down) });
 
+  /* 額面年収 → 手取り（選択中の計算方法で算出・表示用） */
+  const takeHomeFor = (salary: number) =>
+    Math.round(
+      params.taxMode === 'rate'
+        ? salary * (params.taxRate / 100)
+        : interpolateTakeHome(salary, params.taxAnchors)
+    );
+
   /* 公的年金のざっくり概算（老齢基礎78万 + 厚生年金の報酬比例ぶん） */
   const estimatePension = () => {
     const incomes = params.incomeCurve.map((c) => Math.min(c.salary, params.salaryCap)).filter((s) => s > 0);
@@ -239,12 +248,13 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             <button className="icon-btn" onClick={addIncomeRow} aria-label="年収の行を追加"><Plus size={16} /></button>
           </div>
           <table className="mini-table">
-            <thead><tr><th>年齢</th><th>額面年収(万円)</th><th aria-label="操作" /></tr></thead>
+            <thead><tr><th>年齢</th><th>額面(万円)</th><th>手取り(万円)</th><th aria-label="操作" /></tr></thead>
             <tbody>
               {params.incomeCurve.map((c, idx) => (
                 <tr key={idx}>
                   <td><input type="number" inputMode="numeric" value={c.age} onChange={(e) => updateIncomeCurve(idx, 'age', Number(e.target.value))} /></td>
                   <td><input type="number" inputMode="numeric" value={c.salary} onChange={(e) => updateIncomeCurve(idx, 'salary', Number(e.target.value))} /></td>
+                  <td className="cell-calc">{takeHomeFor(c.salary).toLocaleString()}</td>
                   <td>
                     <button className="row-del" onClick={() => removeIncomeRow(idx)} disabled={params.incomeCurve.length <= 1} aria-label="削除">
                       <Trash2 size={15} />
@@ -254,7 +264,7 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
               ))}
             </tbody>
           </table>
-          <p className="field-note">入力した年齢の間は自動で補間されます。</p>
+          <p className="field-note">手取りは選択中の計算方法で自動計算（額面を変えると連動）。年齢の間は自動補間します。</p>
         </div>
 
         <div className="field-row">
