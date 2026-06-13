@@ -43,9 +43,16 @@ export interface SimulationParams {
   spouseIncomeStartAge: number | null; // 配偶者収入開始年齢 (nullは無し)
   spouseIncomeAmount: number; // 年額(万円)
   retirementAge: number | null; // 退職金受取年齢 (nullは無し)
-  retirementAmount: number; // 受取金額(万円)
+  retirementAmount: number; // 受取金額(万円・額面)
+  taxRetirement: boolean; // 退職金に課税(退職所得控除を考慮)するか
   pensionStartAge: number | null; // 公的年金の受給開始年齢 (nullは年金なし)
   pensionAnnual: number; // 公的年金 年額(万円・世帯合計の想定)
+
+  // 税・控除 (NISA / iDeCo / 住宅ローン控除)
+  isNisa: boolean; // 運用益を非課税(NISA等)にするか。falseなら特定口座として運用益に課税
+  idecoAnnual: number; // iDeCo 年間掛金(万円)。掛金×限界税率の節税ぶんを手取りに加算
+  mortgageDeduction: boolean; // 住宅ローン控除を適用するか
+  mortgageDeductionYears: number; // 住宅ローン控除の適用年数 (例: 13)
 
   // 住宅資産
   countHomeAsAsset: boolean; // 購入後の住宅を純資産に計上するか

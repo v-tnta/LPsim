@@ -50,8 +50,15 @@ export const DEFAULT_PARAMS: SimulationParams = {
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,
+  taxRetirement: true,
   pensionStartAge: 65, // 65歳から年金
   pensionAnnual: 240, // ざっくり想定（月20万・世帯）
+
+  // 税・控除
+  isNisa: true, // 運用益は非課税(NISA)を既定に
+  idecoAnnual: 0,
+  mortgageDeduction: true,
+  mortgageDeductionYears: 13,
 
   // 住宅（初期は賃貸。購入予定は未設定）
   buyAge: null,
@@ -127,8 +134,15 @@ export const SAMPLE_PARAMS: SimulationParams = {
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,
+  taxRetirement: false,
   pensionStartAge: null,
   pensionAnnual: 0,
+
+  // 税・控除（サンプルは旧仕様どおり全てオフ）
+  isNisa: true,
+  idecoAnnual: 0,
+  mortgageDeduction: false,
+  mortgageDeductionYears: 13,
 
   buyAge: 27,
   propertyPrice: 5000,

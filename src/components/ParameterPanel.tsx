@@ -152,7 +152,10 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
       params.carPurchases.length > 0 ? `車${params.carPurchases.length}回` : '',
       params.tempEvents.length > 0 ? `イベント${params.tempEvents.length}件` : '',
     ].filter(Boolean).join('・') || 'なし',
-    investment: params.isInvestmentEnabled ? `利回り ${params.investmentYield}%` : 'なし',
+    investment: [
+      params.isInvestmentEnabled ? `利回り${params.investmentYield}%${params.isNisa ? '・NISA' : ''}` : '',
+      params.idecoAnnual > 0 ? `iDeCo${params.idecoAnnual}万` : '',
+    ].filter(Boolean).join('・') || 'なし',
   };
 
   return (
@@ -267,6 +270,7 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             <NumInput value={params.spouseIncomeAmount} onChange={(v) => update('spouseIncomeAmount', v)} unit="万円" />
           </Field>
         </div>
+        <p className="field-note">配偶者の収入は103万円を超えると手取りに換算します（パート想定）。</p>
 
         <div className="field-row">
           <Field label="退職金 受取年齢" hint="なければ空欄">
@@ -276,6 +280,12 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             <NumInput value={params.retirementAmount} onChange={(v) => update('retirementAmount', v)} unit="万円" />
           </Field>
         </div>
+        {params.retirementAmount > 0 && (
+          <label className="check-row">
+            <input type="checkbox" checked={params.taxRetirement} onChange={(e) => update('taxRetirement', e.target.checked)} />
+            <span>退職金に課税する（退職所得控除を考慮・多くは非課税）</span>
+          </label>
+        )}
 
         <Field label="定年（給与の最終年齢）" hint="これ以降は給与なし。なければ空欄">
           <NumInput value={params.workEndAge ?? ''} onChange={(v) => update('workEndAge', v || null)} unit="歳" placeholder="止めない" />
@@ -361,6 +371,15 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             {params.countHomeAsAsset && (
               <Field label={`評価額の減価率：${params.homeDepreciationRate}%/年`} hint="築年数による値下がりの想定">
                 <Slider value={params.homeDepreciationRate} onChange={(v) => update('homeDepreciationRate', v)} min={0} max={5} step={0.5} unit="%" />
+              </Field>
+            )}
+            <label className="check-row">
+              <input type="checkbox" checked={params.mortgageDeduction} onChange={(e) => update('mortgageDeduction', e.target.checked)} />
+              <span>住宅ローン控除を適用する</span>
+            </label>
+            {params.mortgageDeduction && (
+              <Field label="住宅ローン控除の年数" hint="年末残高×0.7%（上限21万/年）を手取りに加算">
+                <NumInput value={params.mortgageDeductionYears} onChange={(v) => update('mortgageDeductionYears', v)} unit="年" />
               </Field>
             )}
           </>
@@ -511,11 +530,20 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             <Field label={`投資に回す割合：${params.investmentRate}%`} hint="毎年の黒字のうち">
               <Slider value={params.investmentRate} onChange={(v) => update('investmentRate', v)} min={0} max={100} step={5} unit="%" />
             </Field>
-            <Field label={`想定利回り：${params.investmentYield}%`} hint="年率（実質）">
+            <Field label={`想定利回り：${params.investmentYield}%`} hint="年率（名目）">
               <Slider value={params.investmentYield} onChange={(v) => update('investmentYield', v)} min={-2} max={10} step={0.5} unit="%" />
             </Field>
+            <label className="check-row">
+              <input type="checkbox" checked={params.isNisa} onChange={(e) => update('isNisa', e.target.checked)} />
+              <span>NISA等の非課税口座（運用益に課税しない）</span>
+            </label>
+            {!params.isNisa && <p className="field-note">特定口座として運用益に約20.315%課税します。</p>}
           </>
         )}
+
+        <Field label="iDeCo 年間掛金" hint="掛金×限界税率ぶん、毎年の手取りが増えます（節税）">
+          <NumInput value={params.idecoAnnual} onChange={(v) => update('idecoAnnual', v)} unit="万円/年" />
+        </Field>
       </Section>
     </div>
   );

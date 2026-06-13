@@ -304,6 +304,63 @@ export const calculateCarCost = (
 };
 
 /**
+ * 課税所得(万円)に対する所得税額(万円)を、速算表で概算します。
+ */
+export const incomeTaxJP = (taxableManYen: number): number => {
+  const t = taxableManYen;
+  if (t <= 0) return 0;
+  if (t <= 195) return t * 0.05;
+  if (t <= 330) return t * 0.10 - 9.75;
+  if (t <= 695) return t * 0.20 - 42.75;
+  if (t <= 900) return t * 0.23 - 63.6;
+  if (t <= 1800) return t * 0.33 - 153.6;
+  if (t <= 4000) return t * 0.40 - 279.6;
+  return t * 0.45 - 479.6;
+};
+
+/**
+ * 額面年収(万円)から、iDeCo節税などに使う限界税率(所得税+住民税)を概算します。
+ */
+export const estimateMarginalRate = (annualSalary: number): number => {
+  if (annualSalary <= 0) return 0;
+  if (annualSalary <= 330) return 0.15; // 所得税5〜10% + 住民税10%
+  if (annualSalary <= 600) return 0.20;
+  if (annualSalary <= 900) return 0.30;
+  if (annualSalary <= 1800) return 0.43;
+  return 0.50;
+};
+
+/**
+ * 退職金の手取りを、退職所得控除を考慮して概算します。
+ * 課税対象 = max(0, 退職金 - 退職所得控除) / 2 に所得税+住民税(10%)。
+ * @param amount 退職金(万円・額面)
+ * @param yearsWorked 勤続年数
+ */
+export const calculateRetirementTakeHome = (amount: number, yearsWorked: number): number => {
+  if (amount <= 0) return 0;
+  const y = Math.max(1, yearsWorked);
+  const deduction = y <= 20 ? 40 * y : 800 + 70 * (y - 20);
+  const taxableBase = Math.max(0, amount - deduction) / 2;
+  const tax = incomeTaxJP(taxableBase) + taxableBase * 0.10;
+  return amount - tax;
+};
+
+/**
+ * 配偶者収入の手取りを概算します。
+ * 103万円以下は非課税(パート想定)で満額、超えたら本人と同じ方式で手取り換算します。
+ */
+export const calculateSpouseTakeHome = (
+  amount: number,
+  params: SimulationParams
+): number => {
+  if (amount <= 0) return 0;
+  if (amount <= 103) return amount; // 非課税の範囲
+  return params.taxMode === 'rate'
+    ? amount * (params.taxRate / 100)
+    : interpolateTakeHome(amount, params.taxAnchors);
+};
+
+/**
  * ライフプランシミュレーションを実行するメインの純粋関数です。
  * @param params シミュレーションパラメータ
  */
@@ -343,15 +400,40 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       takeHome += salary * 0.045;
     }
 
-    // 配偶者収入
+    // 住宅ローン控除: 購入後の適用年数の間、年末ローン残高×0.7%(上限21万)を税額控除として手取りに加算
+    if (
+      params.mortgageDeduction &&
+      params.buyAge !== null &&
+      age >= params.buyAge &&
+      age < params.buyAge + params.mortgageDeductionYears
+    ) {
+      const yearEndBalance = calculateRemainingLoanBalance(
+        params.loanAmount,
+        params.interestRate,
+        params.loanTerm,
+        age - params.buyAge + 1
+      );
+      takeHome += Math.min(yearEndBalance * 0.007, 21);
+    }
+
+    // iDeCo: 働いている間(給与あり)は掛金×限界税率の節税ぶんを手取りに加算
+    if (params.idecoAnnual > 0 && salary > 0) {
+      takeHome += params.idecoAnnual * estimateMarginalRate(salary);
+    }
+
+    // 配偶者収入(103万円超は手取り換算)
     const spouseIncome = (params.spouseIncomeStartAge !== null && age >= params.spouseIncomeStartAge)
-      ? params.spouseIncomeAmount
+      ? calculateSpouseTakeHome(params.spouseIncomeAmount, params)
       : 0;
 
-    // 退職金
-    const retirementPay = (params.retirementAge !== null && age === params.retirementAge)
+    // 退職金(退職所得控除を考慮して課税)
+    let retirementPay = (params.retirementAge !== null && age === params.retirementAge)
       ? params.retirementAmount
       : 0;
+    if (retirementPay > 0 && params.taxRetirement) {
+      const yearsWorked = (params.retirementAge ?? params.endAge) - params.startAge;
+      retirementPay = calculateRetirementTakeHome(retirementPay, yearsWorked);
+    }
 
     // 公的年金 (受給開始年齢以降は毎年加算)。
     // 年金は「今の価値」で入力し、物価連動で実質価値を保つ想定でインフレ係数を掛ける。
@@ -375,6 +457,10 @@ export const simulate = (params: SimulationParams): YearRow[] => {
     if (params.isInvestmentEnabled) {
       // 年初の運用資産に対して利回りを掛ける
       yieldIncome = investment * (params.investmentYield / 100);
+      // 特定口座(NISA以外)は運用益に約20.315%課税
+      if (!params.isNisa && yieldIncome > 0) {
+        yieldIncome *= 1 - 0.20315;
+      }
       investment += yieldIncome;
     }
 
@@ -427,8 +513,8 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       age,
       salary: Math.round(salary),
       takeHome: Math.round(takeHome),
-      spouseIncome,
-      retirementPay,
+      spouseIncome: Math.round(spouseIncome),
+      retirementPay: Math.round(retirementPay),
       pensionIncome,
       basicLivingCost: Math.round(living),
       housingCost: Math.round(housing),
