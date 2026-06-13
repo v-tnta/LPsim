@@ -34,12 +34,14 @@ const GENERIC_EDUCATION_BANDS = [
 export const DEFAULT_PARAMS: SimulationParams = {
   // 基本
   startAge: 30,
-  endAge: 65,
+  endAge: 90, // 老後まで含めて試算
   initialAsset: 0,
+  inflationRate: 0, // 既定は「今の価値」で表示。必要ならスライダーで上げる
 
   // 収入（1行だけの雛形。ユーザーが自分の年収に置き換える前提）
   incomeCurve: [{ age: 30, salary: 400 }],
   salaryCap: 2000, // 実質的に上限なし
+  workEndAge: 64, // 65歳から年金を受け取る前提で64歳まで給与
   taxMode: 'rate',
   taxAnchors: GENERIC_TAX_ANCHORS,
   taxRate: 80, // 手取りざっくり80%
@@ -48,6 +50,8 @@ export const DEFAULT_PARAMS: SimulationParams = {
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,
+  pensionStartAge: 65, // 65歳から年金
+  pensionAnnual: 240, // ざっくり想定（月20万・世帯）
 
   // 住宅（初期は賃貸。購入予定は未設定）
   buyAge: null,
@@ -58,6 +62,8 @@ export const DEFAULT_PARAMS: SimulationParams = {
   loanTerm: 35,
   maintenanceCost: 30,
   rentBeforeBuy: 96, // 月8万円のざっくり想定
+  countHomeAsAsset: true,
+  homeDepreciationRate: 1.0, // 評価額 年1%減価
 
   // 生活費（家賃以外の基礎生活費のざっくり想定）
   basicLivingCost: 180, // 月15万円
@@ -92,6 +98,7 @@ export const SAMPLE_PARAMS: SimulationParams = {
   startAge: 23,
   endAge: 65,
   initialAsset: 0,
+  inflationRate: 0, // サンプルは旧仕様どおり（インフレなし）
 
   incomeCurve: [
     { age: 23, salary: 450 },
@@ -105,6 +112,7 @@ export const SAMPLE_PARAMS: SimulationParams = {
     { age: 37, salary: 1100 },
   ],
   salaryCap: 1100,
+  workEndAge: null,
   taxMode: 'anchor',
   taxAnchors: [
     { salary: 480, takeHome: 354 },
@@ -119,6 +127,8 @@ export const SAMPLE_PARAMS: SimulationParams = {
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,
+  pensionStartAge: null,
+  pensionAnnual: 0,
 
   buyAge: 27,
   propertyPrice: 5000,
@@ -128,6 +138,8 @@ export const SAMPLE_PARAMS: SimulationParams = {
   loanTerm: 35,
   maintenanceCost: 30,
   rentBeforeBuy: 84,
+  countHomeAsAsset: false,
+  homeDepreciationRate: 1.0,
 
   basicLivingCost: 126,
   tempExtraLivingCost: { startAge: 23, endAge: 25, amount: 20 },

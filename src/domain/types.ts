@@ -30,10 +30,12 @@ export interface SimulationParams {
   startAge: number;
   endAge: number;
   initialAsset: number;
+  inflationRate: number; // 物価上昇率(年率%)。生活費・家賃・教育費・住宅維持費を年々膨らませる
 
   // 収入
   incomeCurve: IncomeAnchor[];
   salaryCap: number; // 年収上限(万円)
+  workEndAge: number | null; // 給与収入の最終年齢(これ以降は給与0)。nullで停止なし
   taxMode: 'anchor' | 'rate'; // アンカー補間か一律率か
   taxAnchors: TaxAnchor[];
   taxRate: number; // 一律手取り率 (%)
@@ -42,6 +44,12 @@ export interface SimulationParams {
   spouseIncomeAmount: number; // 年額(万円)
   retirementAge: number | null; // 退職金受取年齢 (nullは無し)
   retirementAmount: number; // 受取金額(万円)
+  pensionStartAge: number | null; // 公的年金の受給開始年齢 (nullは年金なし)
+  pensionAnnual: number; // 公的年金 年額(万円・世帯合計の想定)
+
+  // 住宅資産
+  countHomeAsAsset: boolean; // 購入後の住宅を純資産に計上するか
+  homeDepreciationRate: number; // 物件評価額の年間減価率(%)
 
   // 住宅
   buyAge: number | null; // 購入年齢 (nullは購入なし)
@@ -83,6 +91,7 @@ export interface YearRow {
   takeHome: number;
   spouseIncome: number;
   retirementPay: number;
+  pensionIncome: number; // 公的年金
   basicLivingCost: number;
   housingCost: number;
   educationCost: number;
@@ -90,9 +99,12 @@ export interface YearRow {
   eventCost: number;
   investmentYieldIncome: number; // 運用益
   annualBalance: number; // 年間収支
-  cumulativeAsset: number; // 累計資産
+  cumulativeAsset: number; // 流動資産(現金+運用)。"資産が尽きる"判定はこれで行う
   cumulativeCash: number; // 現金部分
   cumulativeInvestment: number; // 運用資産部分
+  homeValue: number; // 住宅評価額(購入後・減価考慮)
+  homeEquity: number; // 住宅の純価値(評価額 - ローン残高)
+  netWorth: number; // 純資産(流動資産 + 住宅純価値)
 }
 
 export interface Scenario {

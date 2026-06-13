@@ -230,19 +230,45 @@ export const calculateLivingCost = (
 export const calculateHousingCost = (
   age: number,
   params: SimulationParams,
-  annualLoanPayment: number
+  annualLoanPayment: number,
+  inflationFactor = 1
 ): number => {
-  // 住宅購入前、または購入しない場合
+  // 住宅購入前、または購入しない場合: 家賃はインフレで上昇
   if (params.buyAge === null || age < params.buyAge) {
-    return params.rentBeforeBuy;
+    return params.rentBeforeBuy * inflationFactor;
   }
 
-  // 購入後の支出
+  // 購入後の支出。頭金・ローン返済は名目（固定）、維持費はインフレで上昇
   const downPayment = (age === params.buyAge) ? params.downPayment : 0;
   const isLoanPaying = age >= params.buyAge && age < params.buyAge + params.loanTerm;
   const loanCost = isLoanPaying ? annualLoanPayment : 0;
 
-  return downPayment + loanCost + params.maintenanceCost;
+  return downPayment + loanCost + params.maintenanceCost * inflationFactor;
+};
+
+/**
+ * 元利均等返済ローンの、経過年数時点でのローン残高(元本)を計算します。
+ * @param principal 借入額 (万円)
+ * @param annualRatePct 年利 (%)
+ * @param termYears 返済期間 (年)
+ * @param yearsElapsed 経過年数
+ */
+export const calculateRemainingLoanBalance = (
+  principal: number,
+  annualRatePct: number,
+  termYears: number,
+  yearsElapsed: number
+): number => {
+  if (principal <= 0 || termYears <= 0 || yearsElapsed >= termYears) return 0;
+  if (yearsElapsed <= 0) return principal;
+  if (annualRatePct <= 0) return principal * (1 - yearsElapsed / termYears);
+
+  const r = (annualRatePct / 100) / 12;
+  const n = termYears * 12;
+  const k = yearsElapsed * 12;
+  const powN = Math.pow(1 + r, n);
+  const powK = Math.pow(1 + r, k);
+  return principal * (powN - powK) / (powN - 1);
 };
 
 /**
@@ -252,17 +278,18 @@ export const calculateHousingCost = (
  */
 export const calculateCarCost = (
   age: number,
-  params: SimulationParams
+  params: SimulationParams,
+  inflationFactor = 1
 ): number => {
   let cost = 0;
 
-  // 1. 車両購入イベント
+  // 1. 車両購入イベント (購入額は名目・入力値のまま)
   const purchase = params.carPurchases.find(c => c.age === age);
   if (purchase) {
     cost += purchase.price;
   }
 
-  // 2. 維持費の上乗せ (段階的な置き換え方式)
+  // 2. 維持費の上乗せ (段階的な置き換え方式)。維持費はインフレで上昇
   // 設定年齢以上の条件に合ううち、最も高い年齢の維持費を適用する
   const sortedMaint = [...params.carMaintenances].sort((a, b) => a.age - b.age);
   let activeMaintCost = 0;
@@ -271,7 +298,7 @@ export const calculateCarCost = (
       activeMaintCost = sortedMaint[i].cost;
     }
   }
-  cost += activeMaintCost;
+  cost += activeMaintCost * inflationFactor;
 
   return cost;
 };
@@ -294,9 +321,17 @@ export const simulate = (params: SimulationParams): YearRow[] => {
   );
 
   for (let age = params.startAge; age <= params.endAge; age++) {
+    // 物価上昇の累積係数 (開始年齢を1.0とする)
+    const inflationFactor = Math.pow(1 + params.inflationRate / 100, age - params.startAge);
+
     // 1. 収入の計算
-    const salary = interpolateIncome(age, params.incomeCurve, params.salaryCap);
-    
+    let salary = interpolateIncome(age, params.incomeCurve, params.salaryCap);
+
+    // 定年(収入の最終年齢)を過ぎたら給与なし
+    if (params.workEndAge !== null && age > params.workEndAge) {
+      salary = 0;
+    }
+
     let takeHome =
       params.taxMode === 'rate'
         ? salary * (params.taxRate / 100)
@@ -318,13 +353,19 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       ? params.retirementAmount
       : 0;
 
-    // 2. 支出の計算
-    const living = calculateLivingCost(age, params);
-    const housing = calculateHousingCost(age, params, loanPayment);
-    const education = calculateEducationCost(age, params.childrenBirthAges, params.educationCostBand);
-    const car = calculateCarCost(age, params);
-    
-    // 一時イベント
+    // 公的年金 (受給開始年齢以降は毎年加算)。
+    // 年金は「今の価値」で入力し、物価連動で実質価値を保つ想定でインフレ係数を掛ける。
+    const pensionIncome = (params.pensionStartAge !== null && age >= params.pensionStartAge)
+      ? Math.round(params.pensionAnnual * inflationFactor)
+      : 0;
+
+    // 2. 支出の計算 (生活費・教育費・家賃・維持費はインフレで上昇)
+    const living = calculateLivingCost(age, params) * inflationFactor;
+    const housing = calculateHousingCost(age, params, loanPayment, inflationFactor);
+    const education = calculateEducationCost(age, params.childrenBirthAges, params.educationCostBand) * inflationFactor;
+    const car = calculateCarCost(age, params, inflationFactor);
+
+    // 一時イベント (入力値のまま・名目)
     const event = params.tempEvents
       .filter(e => e.age === age)
       .reduce((sum, curr) => sum + curr.amount, 0);
@@ -338,7 +379,7 @@ export const simulate = (params: SimulationParams): YearRow[] => {
     }
 
     // 4. 単年度収支
-    const incomeSum = takeHome + spouseIncome + retirementPay;
+    const incomeSum = takeHome + spouseIncome + retirementPay + pensionIncome;
     const costSum = living + housing + education + car + event;
     const annualBalance = Math.round(incomeSum - costSum + yieldIncome);
 
@@ -365,22 +406,43 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       investment = 0;
     }
 
+    // 6. 住宅の評価額・純価値・純資産の計算
+    let homeValue = 0;
+    let homeEquity = 0;
+    if (params.buyAge !== null && age >= params.buyAge) {
+      const yearsOwned = age - params.buyAge;
+      homeValue = params.propertyPrice * Math.pow(1 - params.homeDepreciationRate / 100, yearsOwned);
+      const remainingLoan = calculateRemainingLoanBalance(
+        params.loanAmount,
+        params.interestRate,
+        params.loanTerm,
+        yearsOwned
+      );
+      homeEquity = homeValue - remainingLoan;
+    }
+    // 純資産 = 流動資産 + (計上する場合のみ)住宅の純価値
+    const netWorth = Math.round(asset + (params.countHomeAsAsset ? homeEquity : 0));
+
     results.push({
       age,
       salary: Math.round(salary),
       takeHome: Math.round(takeHome),
       spouseIncome,
       retirementPay,
-      basicLivingCost: living,
-      housingCost: housing,
-      educationCost: education,
-      carCost: car,
+      pensionIncome,
+      basicLivingCost: Math.round(living),
+      housingCost: Math.round(housing),
+      educationCost: Math.round(education),
+      carCost: Math.round(car),
       eventCost: event,
       investmentYieldIncome: Math.round(yieldIncome),
       annualBalance,
       cumulativeAsset: asset,
       cumulativeCash: Math.round(cash),
       cumulativeInvestment: Math.round(investment),
+      homeValue: Math.round(homeValue),
+      homeEquity: Math.round(homeEquity),
+      netWorth,
     });
   }
 

@@ -35,18 +35,23 @@ function App() {
     [scenarios]
   );
 
+  // 住宅を純資産に計上していて、かつ購入予定がある場合のみ「純資産（住宅含む）」を表示
+  const showNetWorth = params.countHomeAsAsset && params.buyAge !== null;
+  const finalNetWorth = currentResults.length > 0 ? currentResults[currentResults.length - 1].netWorth : 0;
+
   // グラフ用に各シナリオの累計資産を年齢でマージ
   const mergedChartData = useMemo(
     () =>
       currentResults.map((row) => {
         const dataPoint: Record<string, number> = { age: row.age, 現在のプラン: row.cumulativeAsset };
+        if (showNetWorth) dataPoint['純資産（住宅含む）'] = row.netWorth;
         scenarioStats.forEach(({ scenario, rows }) => {
           const match = rows.find((r) => r.age === row.age);
           if (match) dataPoint[scenario.name] = match.cumulativeAsset;
         });
         return dataPoint;
       }),
-    [currentResults, scenarioStats]
+    [currentResults, scenarioStats, showNetWorth]
   );
 
   const handleChangeParams = (newParams: SimulationParams) => setParams(newParams);
@@ -166,11 +171,22 @@ function App() {
               analysis={analysis}
               scenarios={scenarios}
               scenarioStats={scenarioStats}
+              showNetWorth={showNetWorth}
+              finalNetWorth={finalNetWorth}
               onSaveScenario={handleSaveScenario}
               onDeleteScenario={handleDeleteScenario}
             />
-            <ChartSection currentResults={currentResults} scenarios={scenarios} mergedChartData={mergedChartData} />
-            <TableSection results={currentResults} isInvestmentEnabled={params.isInvestmentEnabled} />
+            <ChartSection
+              currentResults={currentResults}
+              scenarios={scenarios}
+              mergedChartData={mergedChartData}
+              showNetWorth={showNetWorth}
+            />
+            <TableSection
+              results={currentResults}
+              isInvestmentEnabled={params.isInvestmentEnabled}
+              showNetWorth={showNetWorth}
+            />
           </div>
         </div>
       </main>

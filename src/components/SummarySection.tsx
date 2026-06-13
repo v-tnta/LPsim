@@ -13,6 +13,8 @@ interface SummarySectionProps {
   analysis: SimulationAnalysis | null;
   scenarios: Scenario[];
   scenarioStats: ScenarioStat[];
+  showNetWorth: boolean;
+  finalNetWorth: number;
   onSaveScenario: (name: string) => void;
   onDeleteScenario: (id: string) => void;
 }
@@ -20,7 +22,7 @@ interface SummarySectionProps {
 const fmt = (n: number) => `${n < 0 ? '▲' : ''}${Math.abs(n).toLocaleString()}`;
 
 export const SummarySection: React.FC<SummarySectionProps> = ({
-  analysis, scenarios, scenarioStats, onSaveScenario, onDeleteScenario,
+  analysis, scenarios, scenarioStats, showNetWorth, finalNetWorth, onSaveScenario, onDeleteScenario,
 }) => {
   const [newName, setNewName] = useState('');
 
@@ -41,10 +43,13 @@ export const SummarySection: React.FC<SummarySectionProps> = ({
           </div>
 
           <div className="hero-main">
-            <span className="hero-label">{analysis.finalAge}歳時点の資産</span>
+            <span className="hero-label">{analysis.finalAge}歳時点の{showNetWorth ? '使えるお金（現金＋運用）' : '資産'}</span>
             <span className={`hero-value ${analysis.finalAsset >= 0 ? 'positive-value' : 'negative-value'}`}>
               {fmt(analysis.finalAsset)}<span className="hero-unit">万円</span>
             </span>
+            {showNetWorth && (
+              <span className="hero-note">住宅を含む純資産：{fmt(finalNetWorth)}万円</span>
+            )}
           </div>
 
           <div className="hero-metrics">

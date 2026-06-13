@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulate, calculateAnnualLoanPayment } from './simulation';
+import { simulate, calculateAnnualLoanPayment, calculateRemainingLoanBalance } from './simulation';
 import { SAMPLE_PARAMS } from './presets';
 
 describe('ライフプラン・シミュレーション 計算エンジンテスト', () => {
@@ -87,6 +87,57 @@ describe('ライフプラン・シミュレーション 計算エンジンテス
       expect(minAge).toBe(53);
       // 実数値は -1773万
       expect(Math.abs(minAsset - (-1808))).toBeLessThanOrEqual(40);
+    });
+  });
+});
+
+describe('追加機能（定年・年金・インフレ・住宅資産）のテスト', () => {
+  // サンプルを 70 歳まで延長したものをベースに使う（インフレ0・定年なし・年金なし・住宅非計上）
+  const base = { ...SAMPLE_PARAMS, endAge: 70 };
+
+  describe('5. 定年(収入の最終年齢)', () => {
+    it('workEndAge を過ぎると給与・手取りが 0 になること', () => {
+      const rows = simulate({ ...base, workEndAge: 60 });
+      expect(rows.find((r) => r.age === 60)!.salary).toBeGreaterThan(0);
+      expect(rows.find((r) => r.age === 61)!.salary).toBe(0);
+      expect(rows.find((r) => r.age === 65)!.takeHome).toBe(0);
+    });
+  });
+
+  describe('6. 公的年金', () => {
+    it('受給開始年齢から年金が加算されること', () => {
+      const rows = simulate({ ...base, pensionStartAge: 65, pensionAnnual: 200 });
+      expect(rows.find((r) => r.age === 64)!.pensionIncome).toBe(0);
+      expect(rows.find((r) => r.age === 65)!.pensionIncome).toBe(200);
+    });
+  });
+
+  describe('7. インフレ', () => {
+    it('インフレ率を上げると将来の生活費が増えること', () => {
+      const noInfl = simulate({ ...base, inflationRate: 0 });
+      const withInfl = simulate({ ...base, inflationRate: 2 });
+      const a = noInfl.find((r) => r.age === 60)!.basicLivingCost;
+      const b = withInfl.find((r) => r.age === 60)!.basicLivingCost;
+      expect(b).toBeGreaterThan(a);
+    });
+  });
+
+  describe('8. 住宅の資産計上', () => {
+    it('住宅を計上すると純資産が流動資産を上回り、住宅純価値が正になること', () => {
+      const rows = simulate({ ...base, countHomeAsAsset: true }); // buyAge 27 / 物件5000万
+      const r = rows.find((x) => x.age === 65)!;
+      expect(r.homeEquity).toBeGreaterThan(0);
+      expect(r.netWorth).toBeGreaterThan(r.cumulativeAsset);
+    });
+  });
+
+  describe('9. ローン残高', () => {
+    it('開始時は借入額、完済時は0、途中はその間になること', () => {
+      expect(calculateRemainingLoanBalance(5000, 1.5, 35, 0)).toBeCloseTo(5000, 0);
+      expect(calculateRemainingLoanBalance(5000, 1.5, 35, 35)).toBe(0);
+      const mid = calculateRemainingLoanBalance(5000, 1.5, 35, 17);
+      expect(mid).toBeGreaterThan(0);
+      expect(mid).toBeLessThan(5000);
     });
   });
 });

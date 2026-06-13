@@ -122,12 +122,23 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
   const setPropertyPrice = (price: number) => updateMany({ propertyPrice: price, loanAmount: Math.max(0, price - params.downPayment) });
   const setDownPayment = (down: number) => updateMany({ downPayment: down, loanAmount: Math.max(0, params.propertyPrice - down) });
 
+  /* 公的年金のざっくり概算（老齢基礎78万 + 厚生年金の報酬比例ぶん） */
+  const estimatePension = () => {
+    const incomes = params.incomeCurve.map((c) => Math.min(c.salary, params.salaryCap)).filter((s) => s > 0);
+    const avg = incomes.length ? incomes.reduce((a, b) => a + b, 0) / incomes.length : 0;
+    const years = Math.max(0, (params.workEndAge ?? params.endAge) - params.startAge);
+    const estimate = Math.round(78 + avg * 0.0055 * years);
+    updateMany({ pensionStartAge: params.pensionStartAge ?? 65, pensionAnnual: estimate });
+  };
+
   /* セクションの一行サマリー */
   const incomeFirst = params.incomeCurve[0]?.salary ?? 0;
   const incomeLast = params.incomeCurve[params.incomeCurve.length - 1]?.salary ?? 0;
   const summaries: Record<string, string> = {
-    basic: `${params.startAge}歳 → ${params.endAge}歳`,
-    income: incomeFirst === incomeLast ? `年収 ${incomeFirst}万円` : `年収 ${incomeFirst}〜${incomeLast}万円`,
+    basic: `${params.startAge}歳 → ${params.endAge}歳・物価+${params.inflationRate}%`,
+    income:
+      (incomeFirst === incomeLast ? `年収 ${incomeFirst}万円` : `年収 ${incomeFirst}〜${incomeLast}万円`) +
+      (params.pensionStartAge !== null ? `・年金${params.pensionAnnual}万` : ''),
     housing:
       params.buyAge !== null
         ? `${params.buyAge}歳で ${params.propertyPrice.toLocaleString()}万円購入`
@@ -166,6 +177,12 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
         <Field label="今ある貯蓄・資産" hint="預貯金などの合計">
           <NumInput value={params.initialAsset} onChange={(v) => update('initialAsset', v)} unit="万円" />
         </Field>
+        <Field label={`物価上昇率（インフレ）：${params.inflationRate}%`} hint="0%なら「今の価値」で表示">
+          <Slider value={params.inflationRate} onChange={(v) => update('inflationRate', v)} min={0} max={5} step={0.1} unit="%" />
+        </Field>
+        <p className="field-note">
+          物価上昇は生活費・家賃・教育費・維持費と年金（今の価値で入力）に反映されます。給与カーブ・退職金・車購入・イベントは入力した金額のまま使います。
+        </p>
       </Section>
 
       {/* 収入・手取り */}
@@ -260,6 +277,25 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
           </Field>
         </div>
 
+        <Field label="定年（給与の最終年齢）" hint="これ以降は給与なし。なければ空欄">
+          <NumInput value={params.workEndAge ?? ''} onChange={(v) => update('workEndAge', v || null)} unit="歳" placeholder="止めない" />
+        </Field>
+
+        <div className="mini-table-block">
+          <div className="mini-table-title-row">
+            <span>公的年金（老後の収入）</span>
+            <button className="text-link" onClick={estimatePension}>年収から概算</button>
+          </div>
+          <div className="field-row">
+            <Field label="受給開始年齢" hint="なければ空欄">
+              <NumInput value={params.pensionStartAge ?? ''} onChange={(v) => update('pensionStartAge', v || null)} unit="歳" placeholder="なし" />
+            </Field>
+            <Field label="年金 年額" hint="世帯合計の想定">
+              <NumInput value={params.pensionAnnual} onChange={(v) => update('pensionAnnual', v)} unit="万円" />
+            </Field>
+          </div>
+        </div>
+
         <button className="advanced-toggle" onClick={() => setShowIncomeAdvanced((v) => !v)}>
           詳細設定 {showIncomeAdvanced ? '−' : '+'}
         </button>
@@ -318,6 +354,15 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
                 <NumInput value={params.maintenanceCost} onChange={(v) => update('maintenanceCost', v)} unit="万円/年" />
               </Field>
             </div>
+            <label className="check-row">
+              <input type="checkbox" checked={params.countHomeAsAsset} onChange={(e) => update('countHomeAsAsset', e.target.checked)} />
+              <span>住宅を純資産に含める（賃貸との比較が公平に）</span>
+            </label>
+            {params.countHomeAsAsset && (
+              <Field label={`評価額の減価率：${params.homeDepreciationRate}%/年`} hint="築年数による値下がりの想定">
+                <Slider value={params.homeDepreciationRate} onChange={(v) => update('homeDepreciationRate', v)} min={0} max={5} step={0.5} unit="%" />
+              </Field>
+            )}
           </>
         )}
       </Section>

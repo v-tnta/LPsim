@@ -347,6 +347,7 @@ input, select, textarea, button { font-family: inherit; }
 .hero-value { font-family: var(--font-heading); font-size: 2.4rem; font-weight: 800; line-height: 1; }
 .hero-value.positive-value, .hero-value.negative-value { color: #fff; }
 .hero-unit { font-size: 1.1rem; font-weight: 700; margin-left: 0.3rem; }
+.hero-note { font-size: 0.78rem; opacity: 0.92; margin-top: 0.4rem; }
 .hero-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 .hero-metric {
   background: rgba(255, 255, 255, 0.14); border-radius: var(--radius-md);

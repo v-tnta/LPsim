@@ -10,6 +10,7 @@ interface ChartSectionProps {
   currentResults: YearRow[];
   scenarios: Scenario[];
   mergedChartData: Record<string, number>[];
+  showNetWorth: boolean;
 }
 
 interface TooltipItem { color?: string; name?: string; value?: number }
@@ -31,7 +32,7 @@ const CustomTooltip: React.FC<ChartTooltipProps> = ({ active, payload, label }) 
   );
 };
 
-export const ChartSection: React.FC<ChartSectionProps> = ({ currentResults, scenarios, mergedChartData }) => {
+export const ChartSection: React.FC<ChartSectionProps> = ({ currentResults, scenarios, mergedChartData, showNetWorth }) => {
   const [activeTab, setActiveTab] = useState<'asset' | 'balance'>('asset');
 
   return (
@@ -59,6 +60,9 @@ export const ChartSection: React.FC<ChartSectionProps> = ({ currentResults, scen
               <ReferenceLine y={0} stroke="var(--danger)" strokeWidth={1} />
               <ReferenceArea y1={-9999999} y2={0} fill="var(--danger)" fillOpacity={0.04} />
               <Line type="monotone" dataKey="現在のプラン" stroke="var(--primary)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+              {showNetWorth && (
+                <Line type="monotone" dataKey="純資産（住宅含む）" stroke="var(--success)" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+              )}
               {scenarios.map((sc) => (
                 <Line
                   key={sc.id}
