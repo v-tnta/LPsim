@@ -107,16 +107,17 @@ export const SAMPLE_PARAMS: SimulationParams = {
   initialAsset: 0,
   inflationRate: 0, // サンプルは旧仕様どおり（インフレなし）
 
+  // ITエンジニア・評価A(賞与率25%)・標準成長のグレード別年収。
+  // G1(23-26)→G2(27-31)→G3(32-39)→G4(40-)で昇格し、46歳で1,050万に到達後プラトー。
   incomeCurve: [
-    { age: 23, salary: 450 },
-    { age: 24, salary: 480 },
-    { age: 26, salary: 550 },
-    { age: 27, salary: 600 },
-    { age: 29, salary: 700 },
-    { age: 31, salary: 825 },
-    { age: 33, salary: 925 },
-    { age: 35, salary: 1000 },
-    { age: 37, salary: 1100 },
+    { age: 23, salary: 450 }, // G1 スタート
+    { age: 26, salary: 540 }, // G1 上限
+    { age: 27, salary: 570 }, // G2 昇格
+    { age: 31, salary: 735 }, // G2 上限
+    { age: 32, salary: 765 }, // G3 昇格
+    { age: 39, salary: 953 }, // G3 上限
+    { age: 40, salary: 960 }, // G4 昇格
+    { age: 46, salary: 1050 }, // G4 プラトー(以降65歳まで横ばい)
   ],
   salaryCap: 1100,
   workEndAge: null,
@@ -145,9 +146,9 @@ export const SAMPLE_PARAMS: SimulationParams = {
   mortgageDeductionYears: 13,
 
   buyAge: 27,
-  propertyPrice: 5000,
+  propertyPrice: 4000,
   downPayment: 300,
-  loanAmount: 5000,
+  loanAmount: 4000,
   interestRate: 1.5,
   loanTerm: 35,
   maintenanceCost: 30,
