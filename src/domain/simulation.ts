@@ -483,8 +483,12 @@ export const simulate = (params: SimulationParams): YearRow[] => {
         // マイナスの場合は、まず現金から取り崩し、足りない分を運用資産から取り崩す
         cash += annualBalance; // 収支がマイナスなので減算される
         if (cash < 0) {
-          investment += cash; // 足りないマイナス分を運用資産から引く
-          cash = 0;
+          // 現金が尽きたら運用資産を取り崩す。運用資産も尽きたら不足分は
+          // 負債(現金マイナス)として残す。投資資産をマイナスにすると翌年の
+          // 運用益がマイナスになってしまうため、0で止める。
+          const drawFromInvestment = Math.min(investment, -cash);
+          investment -= drawFromInvestment;
+          cash += drawFromInvestment;
         }
       }
       asset = Math.round(cash + investment);
