@@ -187,6 +187,7 @@ function App() {
             <TableSection
               results={currentResults}
               isInvestmentEnabled={params.isInvestmentEnabled}
+              isNisa={params.isNisa}
               showNetWorth={showNetWorth}
             />
           </div>

@@ -5,10 +5,11 @@ import { FileDown, Table, ChevronDown } from 'lucide-react';
 interface TableSectionProps {
   results: YearRow[];
   isInvestmentEnabled: boolean;
+  isNisa: boolean;
   showNetWorth: boolean;
 }
 
-export const TableSection: React.FC<TableSectionProps> = ({ results, isInvestmentEnabled, showNetWorth }) => {
+export const TableSection: React.FC<TableSectionProps> = ({ results, isInvestmentEnabled, isNisa, showNetWorth }) => {
   const [open, setOpen] = useState(false);
 
   const handleExportCSV = () => {
@@ -18,7 +19,7 @@ export const TableSection: React.FC<TableSectionProps> = ({ results, isInvestmen
       '基礎生活費', '住居費', '教育費', '車関連費', '一時イベント',
       ...(isInvestmentEnabled ? ['想定運用益'] : []),
       '年間収支', '累計資産',
-      ...(isInvestmentEnabled ? ['うち現金', 'うち運用資産'] : []),
+      ...(isInvestmentEnabled ? ['現金口座残高', isNisa ? 'NISA口座残高' : '特定口座残高'] : []),
       ...(showNetWorth ? ['住宅評価額', '純資産'] : []),
     ];
     const rows = results.map((row) => [
