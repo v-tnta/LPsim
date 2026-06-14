@@ -199,48 +199,9 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
 
       {/* 収入・手取り */}
       <Section id="income" icon={<TrendingUp size={18} />} title="収入・手取り" summary={summaries.income} active={activeSection === 'income'} onToggle={toggleSection}>
-        <Field label="手取りの計算方法">
-          <div className="seg-control">
-            <button className={params.taxMode === 'rate' ? 'active' : ''} onClick={() => update('taxMode', 'rate')}>
-              かんたん（割合）
-            </button>
-            <button className={params.taxMode === 'anchor' ? 'active' : ''} onClick={() => update('taxMode', 'anchor')}>
-              年収別
-            </button>
-          </div>
+        <Field label={`手取りの割合：${params.taxRate}%`} hint="額面のうち手取りになる割合">
+          <Slider value={params.taxRate} onChange={(v) => updateMany({ taxRate: v, taxMode: 'rate' })} min={50} max={95} step={1} unit="%" />
         </Field>
-
-        {params.taxMode === 'rate' ? (
-          <Field label={`手取りの割合：${params.taxRate}%`} hint="額面のうち手取りになる割合">
-            <Slider value={params.taxRate} onChange={(v) => update('taxRate', v)} min={50} max={95} step={1} unit="%" />
-          </Field>
-        ) : (
-          <div className="mini-table-block">
-            <div className="mini-table-title">年収ごとの手取り（万円）</div>
-            <table className="mini-table">
-              <thead><tr><th>額面</th><th>手取り</th></tr></thead>
-              <tbody>
-                {params.taxAnchors.map((a, idx) => (
-                  <tr key={idx}>
-                    <td>{a.salary.toLocaleString()}</td>
-                    <td>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={a.takeHome}
-                        onChange={(e) => {
-                          const next = [...params.taxAnchors];
-                          next[idx] = { ...next[idx], takeHome: Number(e.target.value) };
-                          update('taxAnchors', next);
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
 
         <div className="mini-table-block">
           <div className="mini-table-title-row">
@@ -264,7 +225,7 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
               ))}
             </tbody>
           </table>
-          <p className="field-note">手取りは選択中の計算方法で自動計算（額面を変えると連動）。年齢の間は自動補間します。</p>
+          <p className="field-note">手取りは上の割合から自動計算（額面を変えると連動）。年齢の間は自動補間します。</p>
         </div>
 
         <div className="field-row">
