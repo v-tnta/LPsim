@@ -389,6 +389,15 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       salary = 0;
     }
 
+    // 一時中断(育休など)の期間中は給与なし
+    if (
+      params.selfIncomePause &&
+      age >= params.selfIncomePause.startAge &&
+      age <= params.selfIncomePause.endAge
+    ) {
+      salary = 0;
+    }
+
     let takeHome =
       params.taxMode === 'rate'
         ? salary * (params.taxRate / 100)
@@ -421,8 +430,14 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       takeHome += params.idecoAnnual * estimateMarginalRate(salary);
     }
 
-    // 配偶者収入(103万円超は手取り換算)
-    const spouseIncome = (params.spouseIncomeStartAge !== null && age >= params.spouseIncomeStartAge)
+    // 配偶者収入(103万円超は手取り換算)。開始〜辞める年齢の範囲内、かつ中断期間外のみ
+    const spouseStarted = params.spouseIncomeStartAge !== null && age >= params.spouseIncomeStartAge;
+    const spouseEnded = params.spouseIncomeEndAge !== null && age > params.spouseIncomeEndAge;
+    const spousePaused =
+      params.spouseIncomePause !== null &&
+      age >= params.spouseIncomePause.startAge &&
+      age <= params.spouseIncomePause.endAge;
+    const spouseIncome = (spouseStarted && !spouseEnded && !spousePaused)
       ? calculateSpouseTakeHome(params.spouseIncomeAmount, params)
       : 0;
 

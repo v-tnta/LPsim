@@ -241,7 +241,37 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
             <NumInput value={params.spouseIncomeAmount} onChange={(v) => update('spouseIncomeAmount', v)} unit="万円" />
           </Field>
         </div>
-        <p className="field-note">配偶者の収入は103万円を超えると手取りに換算します（パート想定）。</p>
+        <div className="field-row">
+          <Field label="配偶者が辞める年齢" hint="これ以降は収入なし。なければ空欄">
+            <NumInput
+              value={params.spouseIncomeEndAge ?? ''}
+              onChange={(v) => update('spouseIncomeEndAge', v || null)}
+              unit="歳"
+              placeholder="辞めない"
+            />
+          </Field>
+        </div>
+        <div className="mini-table-block">
+          <div className="mini-table-title-row">
+            <span>配偶者の収入 一時中断（育休など）</span>
+            <button
+              className="text-link"
+              onClick={() =>
+                update('spouseIncomePause', params.spouseIncomePause ? null : { startAge: params.spouseIncomeStartAge ?? params.startAge, endAge: (params.spouseIncomeStartAge ?? params.startAge) + 1 })
+              }
+            >
+              {params.spouseIncomePause ? '削除' : '追加'}
+            </button>
+          </div>
+          {params.spouseIncomePause && (
+            <div className="range-row">
+              <NumInput value={params.spouseIncomePause.startAge} onChange={(v) => update('spouseIncomePause', { ...params.spouseIncomePause!, startAge: v })} unit="歳" />
+              <span>〜</span>
+              <NumInput value={params.spouseIncomePause.endAge} onChange={(v) => update('spouseIncomePause', { ...params.spouseIncomePause!, endAge: v })} unit="歳" />
+            </div>
+          )}
+        </div>
+        <p className="field-note">配偶者の収入は103万円を超えると手取りに換算します（パート想定）。中断期間中は収入0になります。</p>
 
         <div className="field-row">
           <Field label="退職金 受取年齢" hint="なければ空欄">
@@ -261,6 +291,28 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({ params, onChange
         <Field label="定年（給与の最終年齢）" hint="これ以降は給与なし。なければ空欄">
           <NumInput value={params.workEndAge ?? ''} onChange={(v) => update('workEndAge', v || null)} unit="歳" placeholder="止めない" />
         </Field>
+
+        <div className="mini-table-block">
+          <div className="mini-table-title-row">
+            <span>本人の収入 一時中断（育休など）</span>
+            <button
+              className="text-link"
+              onClick={() =>
+                update('selfIncomePause', params.selfIncomePause ? null : { startAge: params.startAge, endAge: params.startAge + 1 })
+              }
+            >
+              {params.selfIncomePause ? '削除' : '追加'}
+            </button>
+          </div>
+          {params.selfIncomePause && (
+            <div className="range-row">
+              <NumInput value={params.selfIncomePause.startAge} onChange={(v) => update('selfIncomePause', { ...params.selfIncomePause!, startAge: v })} unit="歳" />
+              <span>〜</span>
+              <NumInput value={params.selfIncomePause.endAge} onChange={(v) => update('selfIncomePause', { ...params.selfIncomePause!, endAge: v })} unit="歳" />
+            </div>
+          )}
+          <p className="field-note">中断期間中は給与0になります（育休・休職など）。</p>
+        </div>
 
         <div className="mini-table-block">
           <div className="mini-table-title-row">

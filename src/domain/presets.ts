@@ -42,11 +42,14 @@ export const DEFAULT_PARAMS: SimulationParams = {
   incomeCurve: [{ age: 30, salary: 400 }],
   salaryCap: 2000, // 実質的に上限なし
   workEndAge: 64, // 65歳から年金を受け取る前提で64歳まで給与
+  selfIncomePause: null,
   taxMode: 'rate',
   taxAnchors: GENERIC_TAX_ANCHORS,
   taxRate: 80, // 手取りざっくり80%
   isFirstYearNoResidentTax: false,
   spouseIncomeStartAge: null,
+  spouseIncomeEndAge: null,
+  spouseIncomePause: null,
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,
@@ -121,6 +124,7 @@ export const SAMPLE_PARAMS: SimulationParams = {
   ],
   salaryCap: 1100,
   workEndAge: null,
+  selfIncomePause: null,
   taxMode: 'anchor',
   taxAnchors: [
     { salary: 480, takeHome: 354 },
@@ -132,6 +136,8 @@ export const SAMPLE_PARAMS: SimulationParams = {
   taxRate: 75,
   isFirstYearNoResidentTax: true,
   spouseIncomeStartAge: null,
+  spouseIncomeEndAge: null,
+  spouseIncomePause: null,
   spouseIncomeAmount: 0,
   retirementAge: null,
   retirementAmount: 0,

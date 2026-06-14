@@ -36,11 +36,14 @@ export interface SimulationParams {
   incomeCurve: IncomeAnchor[];
   salaryCap: number; // 年収上限(万円)
   workEndAge: number | null; // 給与収入の最終年齢(これ以降は給与0)。nullで停止なし
+  selfIncomePause: { startAge: number; endAge: number } | null; // 本人の収入一時中断(育休など)。期間中は給与0。nullで中断なし
   taxMode: 'anchor' | 'rate'; // アンカー補間か一律率か
   taxAnchors: TaxAnchor[];
   taxRate: number; // 一律手取り率 (%)
   isFirstYearNoResidentTax: boolean; // 初年度住民税なしオプション
   spouseIncomeStartAge: number | null; // 配偶者収入開始年齢 (nullは無し)
+  spouseIncomeEndAge: number | null; // 配偶者が収入を辞める年齢(これ以降は0)。nullで停止なし
+  spouseIncomePause: { startAge: number; endAge: number } | null; // 配偶者の収入一時中断(育休など)。期間中は0。nullで中断なし
   spouseIncomeAmount: number; // 年額(万円)
   retirementAge: number | null; // 退職金受取年齢 (nullは無し)
   retirementAmount: number; // 受取金額(万円・額面)
