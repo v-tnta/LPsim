@@ -453,6 +453,8 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       .reduce((sum, curr) => sum + curr.amount, 0);
 
     // 3. 運用益の計算 (オプションONの場合)
+    // 運用益は投資資産の中で複利として積み上がるだけで、年間収支(annualBalance)には
+    // 含めない。収支に含めると、ここでの investment 加算と後段の積立で二重計上になる。
     let yieldIncome = 0;
     if (params.isInvestmentEnabled) {
       // 年初の運用資産に対して利回りを掛ける
@@ -464,10 +466,10 @@ export const simulate = (params: SimulationParams): YearRow[] => {
       investment += yieldIncome;
     }
 
-    // 4. 単年度収支
+    // 4. 単年度収支 (運用益は含めない=営業キャッシュフロー)
     const incomeSum = takeHome + spouseIncome + retirementPay + pensionIncome;
     const costSum = living + housing + education + car + event;
-    const annualBalance = Math.round(incomeSum - costSum + yieldIncome);
+    const annualBalance = Math.round(incomeSum - costSum);
 
     // 5. 資産残高の更新と運用積立
     if (params.isInvestmentEnabled) {
