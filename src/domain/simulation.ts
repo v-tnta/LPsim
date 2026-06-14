@@ -431,10 +431,10 @@ export const simulate = (params: SimulationParams): YearRow[] => {
     }
 
     // 配偶者収入(103万円超は手取り換算)。開始〜辞める年齢の範囲内、かつ中断期間外のみ
-    const spouseStarted = params.spouseIncomeStartAge !== null && age >= params.spouseIncomeStartAge;
-    const spouseEnded = params.spouseIncomeEndAge !== null && age > params.spouseIncomeEndAge;
+    const spouseStarted = params.spouseIncomeStartAge != null && age >= params.spouseIncomeStartAge;
+    const spouseEnded = params.spouseIncomeEndAge != null && age > params.spouseIncomeEndAge;
     const spousePaused =
-      params.spouseIncomePause !== null &&
+      params.spouseIncomePause != null &&
       age >= params.spouseIncomePause.startAge &&
       age <= params.spouseIncomePause.endAge;
     const spouseIncome = (spouseStarted && !spouseEnded && !spousePaused)

@@ -16,7 +16,9 @@ type MobileView = 'input' | 'result';
 
 function App() {
   // パラメータとシナリオを localStorage で永続化
-  const [params, setParams] = useLocalStorage<SimulationParams>('lifeplan-params', DEFAULT_PARAMS);
+  const [storedParams, setParams] = useLocalStorage<SimulationParams>('lifeplan-params', DEFAULT_PARAMS);
+  // 旧バージョンで保存されたデータに新しい項目が欠けていても、既定値で補完して落ちないようにする
+  const params = useMemo<SimulationParams>(() => ({ ...DEFAULT_PARAMS, ...storedParams }), [storedParams]);
   const [scenarios, setScenarios] = useLocalStorage<Scenario[]>('lifeplan-scenarios', PRESET_SCENARIOS);
 
   // スマホ用: 「入力」と「結果」の表示切り替え
